@@ -1,3 +1,4 @@
+import { toast } from "@/components/ui/use-toast";
 import AWS from "aws-sdk";
 
 export const uploadToS3 = async (file: File) => {
@@ -25,6 +26,13 @@ export const uploadToS3 = async (file: File) => {
     const upload = s3
       .putObject(params)
       .on("httpUploadProgress", (evt) => {
+        toast({
+          // variant: "destructive",
+          title: "AWS S3",
+          description: `Up load to S3 ... ${parseInt(
+            ((evt.loaded * 100) / evt.total).toString()
+          )}%`,
+        });
         console.log(
           "uploading to s3...",
           parseInt(((evt.loaded * 100) / evt.total).toString())

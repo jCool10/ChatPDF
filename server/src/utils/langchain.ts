@@ -105,7 +105,8 @@ export async function askQuestion(chatId: string, question: string) {
 
   // console.log({ responseText, sourceDocuments })
 
-  sourceDocuments?.map((item) => console.log(item.pageContent))
+  // sourceDocuments?.map((item) => console.log(item.pageContent))
+  console.log(responseText)
 
   const pages = (
     (sourceDocuments ? sourceDocuments.map((d) => d.metadata.page).sort((a, b) => a - b) : []) as number[]
