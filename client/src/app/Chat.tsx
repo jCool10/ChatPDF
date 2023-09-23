@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import axios from "axios";
+import showdown from "showdown";
 
 interface ChatProps {
   chatId: string;
-  onGoToPage: (number) => void;
+  onGoToPage: (arg0: number) => void;
   showPages: boolean;
 }
 
@@ -75,6 +76,11 @@ export function Chat({ chatId, showPages, onGoToPage }: ChatProps) {
     },
   ]);
   const [question, setQuestion] = useState<string>("");
+  const converter = new showdown.Converter();
+
+  const createMarkup = (value: string) => {
+    return { __html: value };
+  };
 
   const onAskQuestion = async () => {
     if (question.length == 0) {
@@ -127,32 +133,35 @@ export function Chat({ chatId, showPages, onGoToPage }: ChatProps) {
         ref={interactionsRef}
         className="flex h-[450px] flex-col gap-2 overflow-scroll rounded-lg bg-secondary p-2"
       >
-        {chatInteractions.map((i, index) => (
-          <Alert key={index}>
-            {i.isBot ? (
-              <Bot className="w-4 h-4" />
-            ) : (
-              <FileQuestion className="w-4 h-4" />
-            )}
-            <AlertDescription>
-              <div>{i.message}</div>
-              {showPages && i.pages && i.pages.length > 0 && (
-                <div className="flex flex-row gap-2 mt-2">
-                  {i.pages.map((p) => (
-                    <Button
-                      key={p}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => onGoToPage(p)}
-                    >
-                      {p}
-                    </Button>
-                  ))}
-                </div>
+        {chatInteractions.map((i, index) => {
+          const message = converter.makeHtml(i.message);
+          return (
+            <Alert key={index}>
+              {i.isBot ? (
+                <Bot className="w-4 h-4" />
+              ) : (
+                <FileQuestion className="w-4 h-4" />
               )}
-            </AlertDescription>
-          </Alert>
-        ))}
+              <AlertDescription>
+                <div dangerouslySetInnerHTML={createMarkup(message)} />
+                {showPages && i.pages && i.pages.length > 0 && (
+                  <div className="flex flex-row gap-2 mt-2">
+                    {i.pages.map((p) => (
+                      <Button
+                        key={p}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onGoToPage(p)}
+                      >
+                        {p}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </AlertDescription>
+            </Alert>
+          );
+        })}
 
         {processing && (
           <Alert key="processing" className="animate-pulse">

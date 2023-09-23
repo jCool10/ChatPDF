@@ -8,6 +8,7 @@ import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { ReactQueryStreamedHydration } from "@tanstack/react-query-next-experimental";
 import Providers from "@/utils/provider";
 import * as dotenv from "dotenv";
+import { Toaster } from "@/components/ui/toaster";
 dotenv.config({ path: ".env" });
 
 const inter = Inter({ subsets: ["latin"] });
@@ -26,9 +27,10 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en">
         <body
-          className={`${inter.className} w-screen py-4 min-h-screen bg-gradient-to-r from-rose-100 to-teal-100`}
+          className={`${inter.className}  w-screen py-4 min-h-screen bg-gradient-to-r from-rose-100 to-teal-100`}
         >
           <Providers>{children}</Providers>
+          <Toaster />
         </body>
       </html>
     </ClerkProvider>

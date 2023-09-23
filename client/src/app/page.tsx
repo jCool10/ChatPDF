@@ -21,7 +21,7 @@ export default async function ChatWithAnyPDF() {
       <Header isAuth={isAuth} />
 
       <div className="">
-        <div className="w-full mt-4">
+        <div className=" mt-4 ">
           {isAuth ? (
             // <FileUpload />
             // "FileUpload"
