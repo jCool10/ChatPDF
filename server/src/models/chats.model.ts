@@ -5,15 +5,18 @@ const DOCUMENT_NAME = 'Chat'
 const COLLECTION_NAME = 'Chats'
 
 export interface IChat {
+  fileKey: string
+  fileName: string
+
   userId: string
-  chatId: string
-  message: Array<IMessage>
 }
 
 const chatsSchema: Schema<IChat> = new Schema(
   {
-    userId: { type: String, required: true },
-    chatId: { type: String, required: true }
+    fileKey: { type: String, required: true },
+    fileName: { type: String, required: true },
+
+    userId: { type: String, required: true }
     // message: { type: Array }
   },
   { timestamps: true, collection: COLLECTION_NAME }

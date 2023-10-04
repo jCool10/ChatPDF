@@ -18,7 +18,7 @@ class Http {
     );
 
     this.instance.interceptors.response.use(
-      (response) => response.data,
+      (response) => response,
       (error) => Promise.reject(error)
     );
   }

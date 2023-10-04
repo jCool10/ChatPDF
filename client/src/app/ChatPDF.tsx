@@ -183,7 +183,7 @@ export function ChatPDF() {
       setProgress(0);
 
       // setPdfFile(file);
-      setPdfFile(getS3Url(data.file_key));
+      setPdfFile(getS3Url(data.fileKey));
       setLoading(true);
     }
   };

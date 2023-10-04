@@ -66,13 +66,18 @@ export async function removeOutdatedChats() {
   }
 }
 
-export async function createChat(pages: Array<PDFPage>) {
-  const documents = pages.map(
-    (p) =>
+interface ICreate {
+  PDFPage: Array<PDFPage>
+  chatId: string
+}
+
+export async function createChat({ PDFPage, chatId }: ICreate) {
+  const documents = PDFPage.map(
+    (page) =>
       new Document({
-        pageContent: p.textContent,
+        pageContent: page.textContent,
         metadata: {
-          page: p.page
+          page: page.page
         }
       })
   )
@@ -83,11 +88,11 @@ export async function createChat(pages: Array<PDFPage>) {
 
   console.log('vectorStore', vectorStore)
 
-  const chatId = randomBytes(32).toString('hex')
+  // const chatId = randomBytes(32).toString('hex')
 
-  const path = await createStoreDir(chatId)
+  // const path = await createStoreDir(chatId)
 
-  await vectorStore.save(path)
+  await vectorStore.save(chatId)
 
   return chatId
 }

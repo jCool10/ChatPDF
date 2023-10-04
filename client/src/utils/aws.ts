@@ -14,12 +14,12 @@ export const uploadToS3 = async (file: File) => {
       region: "ap-southeast-1",
     });
 
-    const file_key =
+    const fileKey =
       "uploads/" + Date.now().toString() + file.name.replace(" ", "-");
 
     const params = {
       Bucket: process.env.NEXT_PUBLIC_S3_BUCKET_NAME!,
-      Key: file_key,
+      Key: fileKey,
       Body: file,
     };
 
@@ -41,12 +41,12 @@ export const uploadToS3 = async (file: File) => {
       .promise();
 
     await upload.then((data) => {
-      console.log("successfully uploaded to S3!", file_key);
+      console.log("successfully uploaded to S3!", fileKey);
     });
 
     return Promise.resolve({
-      file_key,
-      file_name: file.name,
+      fileKey,
+      fileName: file.name,
     });
   } catch (error) {
     console.log(error);

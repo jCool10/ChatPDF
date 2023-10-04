@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Bot, FileUp, Loader2 } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
 
@@ -76,14 +76,16 @@ const extractPageText = async (page: any) => {
   return text;
 };
 
-export function PDFViewer() {
+export function PDFViewer({ pdfUrl }: { pdfUrl: string }) {
+  // console.log(fileKey);
+  // console.log(getS3Url(fileKey));
   const { toast } = useToast();
 
   const pdfRef = useRef<HTMLInputElement | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [pdfFile, setPdfFile] = useState<string | null>(null);
+  const [pdfFile, setPdfFile] = useState<string>(pdfUrl);
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [chatId, setChatId] = useState<string | null>(null);
@@ -91,13 +93,20 @@ export function PDFViewer() {
     null
   );
 
+  useEffect(() => {
+    setPdfFile(pdfUrl);
+  }, [pdfUrl]);
+
+  console.log("pdfFile", pdfFile);
+
   const onDocumentLoadSuccess = async (document: any) => {
-    console.log(document);
+    console.log("document", document);
     setProgress(0);
     setNumPages(document.numPages);
 
     const result = await processDocument(document, () => setProgress(20));
 
+    console.log("result", result);
     setProgress(100);
     setLoading(false);
     if (result?.success && result.chatId) {
@@ -152,43 +161,6 @@ export function PDFViewer() {
     setLoading(false);
   }
 
-  const uploadFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files?.length) {
-      return;
-    }
-
-    setFileValidationError(null);
-
-    const [file] = Array.from(event.target.files);
-    // console.log("file", file);
-    if (file && file.size > maxFileSize) {
-      setFileValidationError(
-        `The file size must not exceed ${
-          Math.round(maxFileSize) / 1_000_000
-        } MB.`
-      );
-      return;
-    }
-
-    console.log(file);
-
-    // try {
-    const data = await uploadToS3(file);
-    console.log("data - aws", data);
-    // } catch (error) {
-    // console.log(error);
-    // }
-
-    if (data) {
-      setChatId(null);
-      setProgress(0);
-
-      // setPdfFile(file);
-      setPdfFile(getS3Url(data.file_key));
-      setLoading(true);
-    }
-  };
-
   const hasNextPage = () => numPages != null && pageNumber < numPages;
   const hasPreviousPage = () => pageNumber > 1;
 
@@ -205,48 +177,6 @@ export function PDFViewer() {
 
   return (
     <>
-      <div>
-        <input
-          ref={pdfRef}
-          type="file"
-          name="pdf"
-          accept="application/pdf"
-          className="hidden"
-          onChange={uploadFile}
-        />
-        <div className="flex flex-col gap-4 md:flex-row md:items-center">
-          <Button
-            disabled={loading}
-            onClick={(e) => {
-              e.preventDefault();
-              pdfRef?.current?.click();
-            }}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Please wait
-              </>
-            ) : (
-              <>
-                <FileUp className="w-4 h-4 mr-2" /> Upload{" "}
-                {chatId ? "another" : "your"} PDF
-              </>
-            )}
-          </Button>
-          <div className="max-w-[400px] text-sm text-muted-foreground">
-            {
-              "Don't close the browser tab to lose the chat. The chat with your PDF is available for the next 24 hours."
-            }
-          </div>
-        </div>
-        {fileValidationError && (
-          <Alert variant="destructive" className="mt-2 w-[300px]">
-            <AlertCircle className="w-4 h-4" />
-            <AlertDescription>{fileValidationError}</AlertDescription>
-          </Alert>
-        )}
-      </div>
       {pdfFile && (
         // md:grid-cols-2
         <div className={`mt-4 grid grid-cols-1 gap-10 `}>
@@ -291,24 +221,6 @@ export function PDFViewer() {
               />
             </Document>
           </div>
-          {/* <div>
-            {!chatId && (
-              <div>
-                <span className="flex flex-row items-center">
-                  <Bot className="w-4 h-4 mr-2 animate-pulse " />
-                  The chat is being prepared...
-                </span>
-                <Progress value={progress} className="mt-2 w-[300px]" />
-              </div>
-            )}
-            {chatId && (
-              <Chat
-                chatId={chatId}
-                showPages={numPages != null && numPages > 1}
-                onGoToPage={(newPage) => setPageNumber(newPage)}
-              />
-            )} 
-          </div> */}
         </div>
       )}
     </>

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, LogIn } from "lucide-react";
 import Header from "@/components/shared/Header";
+import FileUpload from "@/components/shared/FileUpload";
 
 export const metadata: Metadata = {
   title: "Chat with any PDF",
@@ -23,8 +24,7 @@ export default async function ChatWithAnyPDF() {
       <div className="">
         <div className=" mt-4 ">
           {isAuth ? (
-            // <FileUpload />
-            // "FileUpload"
+            // <FileUpload userId={userId} />
             <ChatPDF />
           ) : (
             <Link href="/sign-in">
