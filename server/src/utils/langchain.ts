@@ -68,10 +68,10 @@ export async function removeOutdatedChats() {
 
 interface ICreate {
   PDFPage: Array<PDFPage>
-  chatId: string
+  chatDetailId: string
 }
 
-export async function createChat({ PDFPage, chatId }: ICreate) {
+export async function createChat({ PDFPage, chatDetailId }: ICreate) {
   const documents = PDFPage.map(
     (page) =>
       new Document({
@@ -88,17 +88,12 @@ export async function createChat({ PDFPage, chatId }: ICreate) {
 
   console.log('vectorStore', vectorStore)
 
-  // const chatId = randomBytes(32).toString('hex')
-
-  // const path = await createStoreDir(chatId)
-
-  await vectorStore.save(chatId)
-
-  return chatId
+  await vectorStore.save(chatDetailId)
 }
 
 export async function askQuestion(chatId: string, question: string) {
-  const vectorStore = await HNSWLib.load(storePath(chatId), embeddingModel)
+  const vectorStore = await HNSWLib.load(chatId, embeddingModel)
+  console.log(vectorStore)
 
   const chain = VectorDBQAChain.fromLLM(model, vectorStore, {
     k: 5,

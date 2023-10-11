@@ -13,6 +13,19 @@ interface IChat {
   userId: string
 }
 class chatPDFService {
+  static process = async (req: any) => {
+    console.log('req - process', req)
+    const { pages, chatDetailId } = req
+
+    if (pages.length == 0) {
+      throw new BadRequestError('At least one PDF page required')
+    }
+
+    await createChat({ PDFPage: pages, chatDetailId })
+
+    return { success: true }
+  }
+
   static getChatDetail = async (payload: string) => {
     const chatId = payload
     console.log('chatId', chatId)
@@ -29,26 +42,27 @@ class chatPDFService {
     const userId = 'user_2VWjXk0ANcXP1VyOjgvGJ8VBwcc'
 
     const select = { fileKey: 1, fileName: 2 }
-    const chats = await ChatsModel.find<IChat>({ userId }).select(select)
+    const chats = await ChatsModel.find<IChat>({ userId }).select(select).sort({ createdAt: -1 })
 
     if (!chats) throw new NotFoundError('Chat not found')
 
     return { chats }
   }
 
-  static new = async (req: Array<PDFPage>) => {
-    const pages = req
+  static new = async (req: any) => {
+    const { pages, chatDetailId } = req
 
     if (pages.length == 0) throw new BadRequestError('At least one PDF page required')
 
-    // const chatId = await createChat(pages)
+    await createChat({ PDFPage: pages, chatDetailId })
 
-    return {}
+    return {
+      chatDetailId,
+      success: true
+    }
   }
 
   static create = async (req: AWSFile) => {
-    console.log(req)
-    // const { PDFPage, chatId } = req
     const { fileKey, fileName, userId } = req
 
     const newChat = await ChatsModel.create({ fileKey, fileName, userId })

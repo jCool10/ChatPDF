@@ -41,13 +41,6 @@ async function askQuestion(chatId: string, question: string) {
 
     console.log(response);
 
-    // if (response.ok) {
-    //   return (await response.json()) as {
-    //     success: boolean;
-    //     result?: { text: string; pages: number[] };
-    //   };
-    // }
-
     if (response.status == 200) {
       return {
         success: true,

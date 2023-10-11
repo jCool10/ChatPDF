@@ -58,7 +58,7 @@ const FileUpload = ({ userId }: Props) => {
       return;
     }
 
-    console.log(file);
+    console.log("file", file);
 
     setLoading(true);
     const data = await uploadToS3(file);
@@ -67,6 +67,7 @@ const FileUpload = ({ userId }: Props) => {
 
     if (data) {
       // Save vào DB
+      setLoading(true);
       createPDFMutation.mutate(
         { ...data, userId },
         {
@@ -77,6 +78,7 @@ const FileUpload = ({ userId }: Props) => {
           onError: (error) => console.log(error),
         }
       );
+      setLoading(false);
     }
   };
 

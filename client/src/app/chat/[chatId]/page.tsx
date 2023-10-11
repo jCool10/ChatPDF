@@ -3,6 +3,7 @@
 import chatsApi from "@/apis/chats.api";
 import ChatComponent from "@/components/shared/ChatComponent";
 import ChatSideBar from "@/components/shared/ChatSideBar";
+import { MainComponent } from "@/components/shared/MainComponent";
 import { PDFViewer } from "@/components/shared/PDFViewer";
 import { getS3Url } from "@/utils/aws";
 import { auth, useAuth } from "@clerk/nextjs";
@@ -35,30 +36,18 @@ export default function page({ params }: { params: { chatId: string } }) {
     queryFn: () => chatsApi.getChatDetail(chatId),
   });
 
-  console.log("ChatDetailData", ChatDetailData?.data.metadata.chat.fileKey);
-
-  // console.log(ChatDetailData?.data.metadata.fileKey);
-
   return (
     <div className=" max-h-screen grid grid-cols-12">
-      {/* <div className=" col-span-2"> */}
-      {/* chat sidebar */}
       <div className="col-span-2">
         <ChatSideBar chats={ChatsData?.data.metadata.chats} />
       </div>
-      {/* pdf viewer */}
-      {/* setPdfFile(getS3Url(fileKey)); */}
 
-      <div className="col-span-5">
-        <PDFViewer
+      <div className="col-span-10">
+        <MainComponent
+          chatDetailId={chatId}
           pdfUrl={getS3Url(ChatDetailData?.data.metadata.chat.fileKey)}
         />
       </div>
-      {/* chat component */}
-      <div className="col-span-5">
-        <ChatComponent chatId={params.chatId} progress={1} />
-      </div>
-      {/* </div> */}
     </div>
   );
 }

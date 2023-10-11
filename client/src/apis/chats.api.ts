@@ -19,7 +19,8 @@ interface IGetChat {
 }
 
 const chatsApi = {
-  new: (body: Array<PDFPage>) => http.post<INew>("/new", body),
+  new: (body: any) => http.post<INew>("/new", body),
+  process: (body: any) => http.post<any>("/process", body),
   create: (body: AWSFile) => http.post<SuccessResponse<INew>>("/create", body),
   getChats: (body: { userId: string }) =>
     http.get<SuccessResponse<IGetChat>>(`/get`, { data: body }),
