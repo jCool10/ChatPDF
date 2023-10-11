@@ -5,6 +5,7 @@ import asyncHandler from '~/helpers/asyncHandler'
 const router: Router = Router()
 
 router.post('/new', asyncHandler(chatPDFController.new))
+router.post('/process', asyncHandler(chatPDFController.process))
 router.post('/ask', asyncHandler(chatPDFController.ask))
 router.post('/create', asyncHandler(chatPDFController.create))
 

@@ -15,8 +15,5 @@ export type AWSFile = {
 };
 
 export interface SuccessResponse<Data> {
-  message: string;
   metadata: Data;
-  reasonStatusCode: string;
-  status: number;
 }

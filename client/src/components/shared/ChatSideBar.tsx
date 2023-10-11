@@ -21,9 +21,6 @@ interface IGetChat {
 }
 
 export default function ChatSideBar({ chats }: Props) {
-  // console.log(chatId);
-  console.log(chats);
-
   return (
     <div className="w-full h-screen p-4 text-gray-200 bg-gray-900">
       <Link href="/">

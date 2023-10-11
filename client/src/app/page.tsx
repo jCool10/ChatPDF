@@ -24,9 +24,9 @@ export default async function ChatWithAnyPDF() {
       <div className="">
         <div className=" mt-4 ">
           {isAuth ? (
-            // <FileUpload userId={userId} />
-            <ChatPDF />
+            <FileUpload userId={userId} />
           ) : (
+            // <ChatPDF />
             <Link href="/sign-in">
               <Button>
                 Login to get Started!

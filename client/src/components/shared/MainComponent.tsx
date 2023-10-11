@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 
-// import { Chat } from "./Chat";
+// import { Chat } from "../";
 import axios from "axios";
 import { useMutation } from "@tanstack/react-query";
 import chatsApi from "@/apis/chats.api";
@@ -24,39 +24,10 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 
 const maxFileSize = 20 * 100_000_000;
 
-const newChat = async (documents: PDFPage[]) => {
-  try {
-    // const response = await fetch(`http://localhost:5000/api/chatPDF/new`, {
-    //   mode: "no-cors",
-    //   method: "POST",
-    //   headers: {
-    //     "Content-Type": "application/json",
-    //   },
-    //   body: JSON.stringify(documents),
-    // });
-
-    const response = await axios.post(
-      "http://localhost:5000/api/chatPDF/new",
-      // JSON.stringify(documents)
-      documents
-    );
-
-    console.log("response", response);
-
-    if (response.status == 200) {
-      return {
-        success: true,
-        chatId: response.data.metadata.chatId,
-      };
-    }
-
-    return null;
-  } catch (e) {
-    console.error(e);
-
-    return null;
-  }
-};
+interface chatPDFNew {
+  pages: Array<PDFPage>;
+  chatDetailId: string;
+}
 
 const extractPageText = async (page: any) => {
   const textContent = await page.getTextContent();
@@ -76,53 +47,35 @@ const extractPageText = async (page: any) => {
   return text;
 };
 
-interface chatPDFNew {
-  pages: Array<PDFPage>;
+interface Props {
+  pdfUrl: string;
   chatDetailId: string;
 }
 
-export function PDFViewer({
-  pdfUrl,
-  chatDetailId,
-}: {
-  pdfUrl: string;
-  chatDetailId: string;
-}) {
-  // console.log(fileKey);
-  // console.log(getS3Url(fileKey));
-  const { toast } = useToast();
+export function MainComponent({ pdfUrl, chatDetailId }: Props) {
+  useEffect(() => {
+    setPdfFile(pdfUrl);
+    setChatId(chatDetailId);
+  }, [chatDetailId, pdfUrl]);
 
-  const pdfRef = useRef<HTMLInputElement | null>(null);
+  const { toast } = useToast();
 
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [pdfFile, setPdfFile] = useState<string>(pdfUrl);
+  const [pdfFile, setPdfFile] = useState<string | null>(null);
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [chatId, setChatId] = useState<string | null>(null);
-  const [fileValidationError, setFileValidationError] = useState<string | null>(
-    null
-  );
-
-  useEffect(() => {
-    setPdfFile(pdfUrl);
-  }, [pdfUrl]);
 
   const onDocumentLoadSuccess = async (document: any) => {
-    console.log("document", document);
     setProgress(0);
     setNumPages(document.numPages);
 
     const result = await processDocument(document, () => setProgress(20));
 
-    console.log("result", result);
-
     setProgress(100);
     setLoading(false);
     if (result) {
-      toast({
-        title: "Process Document success!",
-      });
       return;
     }
 
@@ -133,10 +86,8 @@ export function PDFViewer({
     });
   };
 
-  // createChatPDFMutation
-
   const createChatPDFMutation = useMutation({
-    mutationFn: (body: chatPDFNew) => chatsApi.process(body),
+    mutationFn: (body: chatPDFNew) => chatsApi.new(body),
   });
 
   const processDocument = async (
@@ -154,9 +105,22 @@ export function PDFViewer({
       });
     }
 
-    createChatPDFMutation.mutate({ pages, chatDetailId });
-
     onTextExtracted();
+
+    createChatPDFMutation.mutate(
+      { pages, chatDetailId },
+      {
+        onSuccess: (_) => {
+          toast({
+            title: "Process Document Success!!",
+          });
+        },
+        onError: (error) => {
+          console.log(error);
+          return null;
+        },
+      }
+    );
 
     return true;
   };
@@ -174,6 +138,7 @@ export function PDFViewer({
       setPageNumber(pageNumber - 1);
     }
   };
+
   const onNextPage = () => {
     if (numPages && pageNumber < numPages) {
       setPageNumber(pageNumber + 1);
@@ -183,9 +148,8 @@ export function PDFViewer({
   return (
     <>
       {pdfFile && (
-        // md:grid-cols-2
-        <div className={`mt-4 grid grid-cols-1 gap-10 `}>
-          <div className="flex flex-col py-4 rounded-lg bg-muted">
+        <div className={`mt-4 grid grid-cols-1 gap-10 md:grid-cols-2`}>
+          <div className="flex flex-col p-4 rounded-lg bg-muted">
             {numPages && numPages > 1 && (
               <div className="flex flex-row items-center justify-center gap-2 pb-4">
                 <div>
@@ -218,7 +182,7 @@ export function PDFViewer({
               className="mx-auto container"
             >
               <Page
-                // width={400}
+                // width={300}
                 pageNumber={pageNumber}
                 renderAnnotationLayer={false}
                 renderTextLayer={false}
@@ -226,8 +190,7 @@ export function PDFViewer({
               />
             </Document>
           </div>
-
-          {/* <div>
+          <div>
             {!chatId && (
               <div>
                 <span className="flex flex-row items-center">
@@ -244,7 +207,7 @@ export function PDFViewer({
                 onGoToPage={(newPage) => setPageNumber(newPage)}
               />
             )}
-          </div> */}
+          </div>
         </div>
       )}
     </>

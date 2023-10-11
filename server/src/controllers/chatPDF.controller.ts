@@ -21,13 +21,19 @@ class chatPDFController {
     }
   )
 
-  static new = asyncCatch(
-    async (req: Request<core.ParamsDictionary, any, Array<PDFPage>>, res: Response, next: NextFunction) => {
+  static process = asyncCatch(
+    async (req: Request<core.ParamsDictionary, any, any>, res: Response, next: NextFunction) => {
       new SuccessResponse({
-        metadata: await chatPDFService.new(req.body)
+        metadata: await chatPDFService.process(req.body)
       }).send(res)
     }
   )
+
+  static new = asyncCatch(async (req: Request<core.ParamsDictionary, any, any>, res: Response, next: NextFunction) => {
+    new SuccessResponse({
+      metadata: await chatPDFService.new(req.body)
+    }).send(res)
+  })
 
   static create = asyncCatch(
     async (req: Request<core.ParamsDictionary, any, AWSFile>, res: Response, next: NextFunction) => {
