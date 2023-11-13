@@ -1,4 +1,3 @@
-import { randomBytes } from 'crypto'
 import * as fs from 'fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -7,64 +6,46 @@ import { VectorDBQAChain } from 'langchain/chains'
 import { ChatOpenAI } from 'langchain/chat_models/openai'
 import { Document } from 'langchain/document'
 import { OpenAIEmbeddings } from 'langchain/embeddings/openai'
-import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter'
+import { CharacterTextSplitter, RecursiveCharacterTextSplitter } from 'langchain/text_splitter'
 import { HNSWLib } from 'langchain/vectorstores/hnswlib'
 import { PDFPage } from '~/@type'
 import { OPENAI_API_KEY } from '~/constants'
+import { Pinecone } from '@pinecone-database/pinecone'
+import { PineconeStore } from 'langchain/vectorstores/pinecone'
+import { RetrievalQAChain, loadQAStuffChain } from 'langchain/chains'
+import { FaissStore } from 'langchain/vectorstores/faiss'
+import { ConversationalRetrievalQAChain } from 'langchain/chains'
+
+import * as dotenv from 'dotenv'
+
+dotenv.config()
+
 // import { setAPIKey } from 'langchain/'
 
 const embeddingModel = new OpenAIEmbeddings({
   maxConcurrency: 5,
-  openAIApiKey: OPENAI_API_KEY
-  // openAIApiKey: process.env.OPENAI_API_KEY
+  // openAIApiKey: OPENAI_API_KEY
+  openAIApiKey: process.env.OPENAI_API_KEY
 })
+
+const embedding = new OpenAIEmbeddings()
+
 const textSplitter = new RecursiveCharacterTextSplitter({
   chunkSize: 4000,
   chunkOverlap: 20
 })
 
-const model = new ChatOpenAI({
-  temperature: 0,
-  openAIApiKey: OPENAI_API_KEY,
-  modelName: 'gpt-3.5-turbo'
+const splitter = new CharacterTextSplitter({
+  chunkSize: 200,
+  chunkOverlap: 50
 })
 
-const createStoreDir = async (chatId: string) => {
-  const path = storePath(chatId)
-  await fs.mkdir(path, { recursive: true })
-
-  return path
-}
-
-const storePath = (chatId: string) => {
-  return path.join(tmpdir(), 'chat-pdf', chatId)
-}
-
-function getHoursDiff(a: Date, b: Date): number {
-  const diffInMilliseconds = a.getTime() - b.getTime()
-  const diffInHours = diffInMilliseconds / (1000 * 60 * 60)
-
-  return diffInHours
-}
-
-export async function removeOutdatedChats() {
-  const ttlHours = 24
-  const now = new Date()
-
-  const storageDir = join(tmpdir(), 'damngood.tools', 'chat-pdf')
-  const files = await fs.readdir(storageDir, { withFileTypes: true })
-
-  for (const file of files) {
-    if (file.isDirectory()) {
-      const fullPath = path.join(storageDir, file.name)
-      const stats = await fs.stat(fullPath)
-
-      if (getHoursDiff(now, stats.birthtime) > ttlHours) {
-        await fs.rm(fullPath, { recursive: true, force: true })
-      }
-    }
-  }
-}
+const model = new ChatOpenAI({
+  temperature: 0,
+  // openAIApiKey: OPENAI_API_KEY,
+  modelName: 'gpt-3.5-turbo',
+  openAIApiKey: process.env.OPENAI_API_KEY
+})
 
 interface ICreate {
   PDFPage: Array<PDFPage>
@@ -82,23 +63,48 @@ export async function createChat({ PDFPage, chatDetailId }: ICreate) {
       })
   )
 
-  const chunkedDocuments = await textSplitter.splitDocuments(documents)
+  // const loader = new PDFLoader('D:/Workspace/Web/Projects/ChatPDF/server/src/utils/NextJS-Ebook-Old.pdf')
 
-  const vectorStore = await HNSWLib.fromDocuments(chunkedDocuments, embeddingModel)
+  // const docs = await loader.load()
 
-  console.log('vectorStore', vectorStore)
+  const chunkedDocuments = await splitter.splitDocuments(documents)
 
-  await vectorStore.save(chatDetailId)
+  console.log('chunkedDocuments', chunkedDocuments)
+
+  const vectorStore = await FaissStore.fromDocuments(chunkedDocuments, embeddingModel)
+
+  await vectorStore.save('./Store/')
 }
 
 export async function askQuestion(chatId: string, question: string) {
-  const vectorStore = await HNSWLib.load(chatId, embeddingModel)
-  console.log(vectorStore)
+  console.log(chatId)
+  const vectorStore = await FaissStore.load('./Store/', embedding)
 
-  const chain = VectorDBQAChain.fromLLM(model, vectorStore, {
-    k: 5,
-    returnSourceDocuments: true
+  // console.log('vectorStore', vectorStore)
+
+  // const chain = VectorDBQAChain.fromLLM(model, vectorStore, {
+  //   k: 5,
+  //   returnSourceDocuments: true
+  // })
+
+  console.log('vectorStore', vectorStore)
+
+  // const chain = new RetrievalQAChain({
+  //   combineDocumentsChain: loadQAStuffChain(model),
+  //   retriever: vectorStore.asRetriever(),
+  //   returnSourceDocuments: true
+  // })
+
+  const chain = ConversationalRetrievalQAChain.fromLLM(model, vectorStore.asRetriever(), {
+    qaTemplate: QA_TEMPLATE,
+    questionGeneratorTemplate: CONDENSE_TEMPLATE,
+    returnSourceDocuments: true //The number of source documents returned is 4 by default
   })
+
+  console.log(await chain.call({ query: question }))
+
+  // console.log(chain.call({ question }))
+
   const { text: responseText, sourceDocuments } = (await chain.call({
     query: question
   })) as { text: string; sourceDocuments?: Document[] }
@@ -106,7 +112,6 @@ export async function askQuestion(chatId: string, question: string) {
   // console.log({ responseText, sourceDocuments })
 
   // sourceDocuments?.map((item) => console.log(item.pageContent))
-  console.log(responseText)
 
   const pages = (
     (sourceDocuments ? sourceDocuments.map((d) => d.metadata.page).sort((a, b) => a - b) : []) as number[]
@@ -118,4 +123,34 @@ export async function askQuestion(chatId: string, question: string) {
     text: responseText,
     pages
   }
+}
+
+const CONDENSE_TEMPLATE = `Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question.
+
+Chat History:
+{chat_history}
+Follow Up Input: {question}
+Standalone question:`
+
+const QA_TEMPLATE = `You are a helpful AI assistant. Use the following pieces of context to answer the question at the end.
+If you don't know the answer, just say you don't know. DO NOT try to make up an answer.
+If the question is not related to the context, politely respond that you are tuned to only answer questions that are related to the context.
+
+{context}
+
+Question: {question}
+Helpful answer in markdown:`
+
+export const makeChain = (vectorstore: PineconeStore) => {
+  const model = new ChatOpenAI({
+    temperature: 0, // increase temepreature to get more creative answers
+    modelName: 'gpt-3.5-turbo' //change this to gpt-4 if you have access
+  })
+
+  const chain = ConversationalRetrievalQAChain.fromLLM(model, vectorstore.asRetriever(), {
+    qaTemplate: QA_TEMPLATE,
+    questionGeneratorTemplate: CONDENSE_TEMPLATE,
+    returnSourceDocuments: true //The number of source documents returned is 4 by default
+  })
+  return chain
 }

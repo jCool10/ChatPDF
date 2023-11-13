@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 
-// import { Chat } from "../";
 import axios from "axios";
 import { useMutation } from "@tanstack/react-query";
 import chatsApi from "@/apis/chats.api";
@@ -50,9 +49,10 @@ const extractPageText = async (page: any) => {
 interface Props {
   pdfUrl: string;
   chatDetailId: string;
+  fileKey: string;
 }
 
-export function MainComponent({ pdfUrl, chatDetailId }: Props) {
+export function MainComponent({ pdfUrl, chatDetailId, fileKey }: Props) {
   useEffect(() => {
     setPdfFile(pdfUrl);
     setChatId(chatDetailId);
@@ -68,10 +68,13 @@ export function MainComponent({ pdfUrl, chatDetailId }: Props) {
   const [chatId, setChatId] = useState<string | null>(null);
 
   const onDocumentLoadSuccess = async (document: any) => {
+    console.log("document", document);
     setProgress(0);
     setNumPages(document.numPages);
 
-    const result = await processDocument(document, () => setProgress(20));
+    // const result = await processDocument(document, () => setProgress(20));
+    const result = await ingestDocument(fileKey, () => setProgress(20));
+    console.log("result", result);
 
     setProgress(100);
     setLoading(false);
@@ -86,29 +89,9 @@ export function MainComponent({ pdfUrl, chatDetailId }: Props) {
     });
   };
 
-  const createChatPDFMutation = useMutation({
-    mutationFn: (body: chatPDFNew) => chatsApi.new(body),
-  });
-
-  const processDocument = async (
-    document: any,
-    onTextExtracted: () => void
-  ) => {
-    const pages: PDFPage[] = [];
-    for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber++) {
-      const page = await document.getPage(pageNumber);
-      const pageText = await extractPageText(page);
-
-      pages.push({
-        page: pageNumber,
-        textContent: pageText,
-      });
-    }
-
-    onTextExtracted();
-
-    createChatPDFMutation.mutate(
-      { pages, chatDetailId },
+  const ingestDocument = async (fileKey: any, ingested: () => void) => {
+    ingestMutation(
+      { fileKey },
       {
         onSuccess: (_) => {
           toast({
@@ -117,13 +100,19 @@ export function MainComponent({ pdfUrl, chatDetailId }: Props) {
         },
         onError: (error) => {
           console.log(error);
-          return null;
+          return false;
         },
       }
     );
 
+    ingested();
+
     return true;
   };
+
+  const { mutate: ingestMutation } = useMutation({
+    mutationFn: (payload: any) => chatsApi.ingest(payload),
+  });
 
   function onDocumentLoadError() {
     console.log("onDocumentLoadError");
@@ -182,7 +171,7 @@ export function MainComponent({ pdfUrl, chatDetailId }: Props) {
               className="mx-auto container"
             >
               <Page
-                // width={300}
+                width={300}
                 pageNumber={pageNumber}
                 renderAnnotationLayer={false}
                 renderTextLayer={false}
@@ -202,6 +191,7 @@ export function MainComponent({ pdfUrl, chatDetailId }: Props) {
             )}
             {chatId && (
               <Chat
+                fileKey={fileKey}
                 chatId={chatId}
                 showPages={numPages != null && numPages > 1}
                 onGoToPage={(newPage) => setPageNumber(newPage)}

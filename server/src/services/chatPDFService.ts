@@ -1,11 +1,17 @@
-// import { PDFChatQuestion, PDFPage } from '~/@type/index.js'
-// import { BadRequestError } from '~/core/error.response.js'
-// import { askQuestion, createChat } from '~/utils/langchain.js'
-
+// import { metadata } from './../../../client/src/app/layout';
+import { PDFLoader } from 'langchain/document_loaders/fs/pdf'
+import { OpenAIEmbeddings } from 'langchain/embeddings/openai'
+import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter'
+import { PineconeStore } from 'langchain/vectorstores/pinecone'
 import { AWSFile, PDFChatQuestion, PDFFile, PDFPage } from '~/@type'
 import { BadRequestError, ErrorResponse, NotFoundError } from '~/core/error.response'
 import { ChatsModel } from '~/models/chats.model'
-import { askQuestion, createChat } from '~/utils/langchain'
+import { askQuestion, createChat, makeChain } from '~/utils/langchain'
+import pinecone from '~/utils/pinecone'
+// import { pinecone } from '~/utils/pinecone'
+import { downloadFromS3 } from '~/utils/s3'
+import { AIMessage, HumanMessage } from 'langchain/schema'
+import { Pinecone } from '@pinecone-database/pinecone'
 
 interface IChat {
   fileKey: string
@@ -13,6 +19,84 @@ interface IChat {
   userId: string
 }
 class chatPDFService {
+  static chat = async (payload: any) => {
+    console.log(payload)
+    const { question, history, fileKey } = payload
+
+    const sanitizedQuestion = question.trim().replaceAll('\n', ' ')
+
+    // await pinecone
+
+    const index = (await pinecone).Index('chat-pdf')
+
+    const vectorStore = await PineconeStore.fromExistingIndex(new OpenAIEmbeddings({}), {
+      pineconeIndex: index,
+      textKey: 'text'
+      // namespace: fileKey //namespace comes from your config folder
+    })
+
+    const chain = makeChain(vectorStore)
+
+    const pastMessages = history.map((message: string, i: number) => {
+      if (i % 2 === 0) {
+        return new HumanMessage(message)
+      } else {
+        return new AIMessage(message)
+      }
+    })
+
+    const response = await chain.call({
+      question: sanitizedQuestion,
+      chat_history: pastMessages
+    })
+
+    console.log('response', response)
+
+    const sourceDocuments = (
+      response.sourceDocuments
+        ? response.sourceDocuments
+            .map((source: any) => {
+              console.log(source)
+              return source.metadata['loc.pageNumber']
+            })
+            .sort((a: number, b: number) => a - b)
+        : []
+    ).filter((value: any, index: any, self: string | any[]) => self.indexOf(value) === index)
+
+    return { text: response.text, sourceDocuments }
+  }
+
+  static ingest = async (payload: any) => {
+    // file key
+    console.log(payload)
+    const { fileKey } = payload
+    const filePath = await downloadFromS3(fileKey)
+
+    const loader = new PDFLoader(filePath)
+
+    const rawDocs = await loader.load()
+
+    const textSplitter = new RecursiveCharacterTextSplitter({
+      chunkSize: 4000,
+      chunkOverlap: 200
+    })
+
+    const docs = await textSplitter.splitDocuments(rawDocs)
+    console.log('split docs', docs)
+
+    const embeddings = new OpenAIEmbeddings()
+
+    const index = (await pinecone).Index('chat-pdf') //change to your own index name
+
+    await PineconeStore.fromDocuments(docs, embeddings, {
+      pineconeIndex: index,
+      // namespace: fileKey,
+      textKey: 'text'
+    })
+
+    return {}
+  }
+
   static process = async (req: any) => {
     console.log('req - process', req)
     const { pages, chatDetailId } = req

@@ -28,6 +28,7 @@ export default function ChatComponent({ progress, chatId }: Props) {
       )}
       {chatId && (
         <Chat
+          // fileKey={file}
           chatId={chatId}
           showPages={numPages != null && numPages > 1}
           onGoToPage={(newPage) => setPageNumber(newPage)}

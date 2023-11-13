@@ -1,21 +1,38 @@
 import { Schema, model } from 'mongoose'
 
-const DOCUMENT_NAME = 'Message'
+const DOCUMENT_NAME = 'Messages'
 const COLLECTION_NAME = 'Messages'
 
-export interface IMessage {
-  userId: string
-  chatId: string
-  content: string
-}
+// export interface IMessages {
+//   messages: Array<IMessage>
+//   history: Array<any>
+// }
 
-const messageSchema: Schema<IMessage> = new Schema(
+// interface IMessage {
+//   message: string
+//   type: string
+//   sourceDocs?: Array<Document>
+// }
+
+const messageSchema = new Schema({
+  type: {
+    type: String,
+    enum: ['apiMessage', 'userMessage'],
+    required: true
+  },
+  message: {
+    type: String,
+    required: true
+  },
+  sourceDocs: Array<Document>
+})
+
+const messagesSchema = new Schema(
   {
-    userId: { type: String, required: true },
-    chatId: { type: String, required: true },
-    content: { type: String }
+    messages: [messageSchema],
+    history: [[String, String]]
   },
   { timestamps: true, collection: COLLECTION_NAME }
 )
 
-export const MessageModel = model<IMessage>(DOCUMENT_NAME, messageSchema)
+export const MessagesModel = model(DOCUMENT_NAME, messagesSchema)

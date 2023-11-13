@@ -7,6 +7,18 @@ import asyncCatch from '~/helpers/cathAsync'
 import chatPDFService from '~/services/chatPDFService'
 
 class chatPDFController {
+  static ingest = asyncCatch(async (req: Request, res: Response, next: NextFunction) => {
+    new SuccessResponse({
+      metadata: await chatPDFService.ingest(req.body)
+    }).send(res)
+  })
+
+  static chat = asyncCatch(async (req: Request, res: Response, next: NextFunction) => {
+    new SuccessResponse({
+      metadata: await chatPDFService.chat(req.body)
+    }).send(res)
+  })
+
   static getChatDetail = asyncCatch(async (req: Request, res: Response, next: NextFunction) => {
     new SuccessResponse({
       metadata: await chatPDFService.getChatDetail(req.params.chatId)

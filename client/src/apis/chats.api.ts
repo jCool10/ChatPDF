@@ -26,6 +26,8 @@ const chatsApi = {
     http.get<SuccessResponse<IGetChat>>(`/get`, { data: body }),
   getChatDetail: (chatId: string) =>
     http.get<SuccessResponse<IFile>>(`/get/${chatId}`),
+  ingest: (body: any) => http.post("/ingest", body),
+  chat: (body: any) => http.post("/chat", body),
 };
 
 export default chatsApi;

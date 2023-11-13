@@ -5,14 +5,14 @@ import morgan from 'morgan'
 import bodyParser from 'body-parser'
 import router from './routers'
 import { notFoundError, returnError } from './middleware/errorHandle.middleware'
-import { config } from 'dotenv'
+import * as dotenv from 'dotenv'
 import cors from 'cors'
 import instanceMongodb from './dbs/mongodb'
 
-config()
+dotenv.config()
 
 const app: express.Application = express()
-// console.log(process.env.OPENAI_API_KEY)
+console.log(process.env.OPENAI_API_KEY)
 
 // Database.connect()
 instanceMongodb

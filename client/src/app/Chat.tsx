@@ -9,11 +9,14 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
 import axios from "axios";
 import showdown from "showdown";
+import { useMutation } from "@tanstack/react-query";
+import chatsApi from "@/apis/chats.api";
 
 interface ChatProps {
   chatId: string;
   onGoToPage: (arg0: number) => void;
   showPages: boolean;
+  fileKey: string;
 }
 
 interface ChatInteraction {
@@ -39,7 +42,7 @@ async function askQuestion(chatId: string, question: string) {
 
     // const
 
-    console.log(response);
+    console.log("response", response);
 
     if (response.status == 200) {
       return {
@@ -59,7 +62,13 @@ async function askQuestion(chatId: string, question: string) {
   }
 }
 
-export function Chat({ chatId, showPages, onGoToPage }: ChatProps) {
+type Message = {
+  type: "apiMessage" | "userMessage";
+  message: string;
+  sourceDocs?: Document[];
+};
+
+export function Chat({ chatId, showPages, onGoToPage, fileKey }: ChatProps) {
   const { toast } = useToast();
   const [processing, setProcessing] = useState(false);
   const [chatInteractions, setChatInteractions] = useState<ChatInteraction[]>([
@@ -68,44 +77,111 @@ export function Chat({ chatId, showPages, onGoToPage }: ChatProps) {
       isBot: true,
     },
   ]);
-  const [question, setQuestion] = useState<string>("");
+
+  const [messageState, setMessageState] = useState<{
+    messages: Message[];
+    history: [string, string][];
+  }>({
+    messages: [
+      {
+        message: "Hi, what would you like to learn about this document?",
+        type: "apiMessage",
+      },
+    ],
+    history: [],
+  });
+
+  const { messages, history } = messageState;
+
+  const [query, setQuery] = useState<string>("");
   const converter = new showdown.Converter();
 
   const createMarkup = (value: string) => {
     return { __html: value };
   };
 
-  const onAskQuestion = async () => {
-    if (question.length == 0) {
-      return;
-    }
+  const { mutate: chatMutation } = useMutation({
+    mutationFn: (payload: any) => chatsApi.chat(payload),
+  });
 
-    setChatInteractions((previousInteractions) => [
-      ...previousInteractions,
-      { isBot: false, message: question },
-    ]);
+  const onAskQuestion = async () => {
+    if (!query) return;
+
+    const question = query.trim();
+
+    setMessageState((state) => ({
+      ...state,
+      messages: [
+        ...state.messages,
+        {
+          type: "userMessage",
+          message: question,
+        },
+      ],
+    }));
 
     setProcessing(true);
-    const result = await askQuestion(chatId, question);
-    setProcessing(false);
+    setQuery("");
 
-    if (result?.success && result.result) {
-      const answer = result.result.text;
-      const pages = result.result.pages;
-      setChatInteractions((previousInteractions) => [
-        ...previousInteractions,
-        { isBot: true, message: answer, pages: pages },
-      ]);
-      setQuestion("");
+    chatMutation(
+      { question, history, fileKey },
+      {
+        onSuccess: (data: any) => {
+          console.log("data chat", data.data.metadata);
+          const { sourceDocuments, text } = data.data.metadata;
+          console.log({ sourceDocuments, text });
 
-      return;
-    }
+          setMessageState((state) => ({
+            ...state,
+            messages: [
+              ...state.messages,
+              {
+                type: "apiMessage",
+                message: text,
+                sourceDocs: sourceDocuments,
+              },
+            ],
+            history: [...state.history, [question, text]],
+          }));
 
-    toast({
-      variant: "destructive",
-      title: "Uh oh! Something went wrong.",
-      description: "There was a problem with your request.",
-    });
+          console.log("messageState", messageState);
+
+          setProcessing(false);
+        },
+        onError: (error) => {
+          console.log(error);
+
+          return false;
+        },
+      }
+    );
+
+    // setChatInteractions((previousInteractions) => [
+    //   ...previousInteractions,
+    //   { isBot: false, message: question },
+    // ]);
+
+    // setProcessing(true);
+    // const result = await askQuestion(chatId, question);
+    // setProcessing(false);
+
+    // if (result?.success && result.result) {
+    //   const answer = result.result.text;
+    //   const pages = result.result.pages;
+    //   setChatInteractions((previousInteractions) => [
+    //     ...previousInteractions,
+    //     { isBot: true, message: answer, pages: pages },
+    //   ]);
+    //   setQuestion("");
+
+    //   return;
+    // }
+
+    // toast({
+    //   variant: "destructive",
+    //   title: "Uh oh! Something went wrong.",
+    //   description: "There was a problem with your request.",
+    // });
   };
 
   const interactionsRef = useRef<HTMLDivElement>(null);
@@ -126,7 +202,7 @@ export function Chat({ chatId, showPages, onGoToPage }: ChatProps) {
         ref={interactionsRef}
         className="flex h-[450px] flex-col gap-2 overflow-scroll rounded-lg bg-secondary p-2"
       >
-        {chatInteractions.map((i, index) => {
+        {/* {chatInteractions.map((i, index) => {
           const message = converter.makeHtml(i.message);
           return (
             <Alert key={index}>
@@ -154,7 +230,52 @@ export function Chat({ chatId, showPages, onGoToPage }: ChatProps) {
               </AlertDescription>
             </Alert>
           );
-        })}
+        })} */}
+        {messages.map((message, index) => (
+          <Alert key={index}>
+            {message.type === "apiMessage" ? (
+              <Bot className="w-4 h-4" />
+            ) : (
+              <FileQuestion className="w-4 h-4" />
+            )}
+            <AlertDescription>
+              <div dangerouslySetInnerHTML={createMarkup(message.message)} />
+
+              {message.sourceDocs && (
+                <div className="flex flex-row gap-2 mt-2">
+                  {message.sourceDocs.map((source: any, index) => {
+                    return (
+                      <Button
+                        key={index}
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          onGoToPage(source.metadata["loc.pageNumber"])
+                        }
+                      >
+                        {source.metadata["loc.pageNumber"]}
+                      </Button>
+                    );
+                  })}
+                </div>
+              )}
+              {/* {showPages && i.pages && i.pages.length > 0 && (
+                <div className="flex flex-row gap-2 mt-2">
+                  {i.pages.map((p) => (
+                    <Button
+                      key={p}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onGoToPage(p)}
+                    >
+                      {p}
+                    </Button>
+                  ))}
+                </div>
+              )} */}
+            </AlertDescription>
+          </Alert>
+        ))}
 
         {processing && (
           <Alert key="processing" className="animate-pulse">
@@ -174,8 +295,8 @@ export function Chat({ chatId, showPages, onGoToPage }: ChatProps) {
           disabled={processing}
           type="text"
           placeholder="Ask any question"
-          onChange={(e) => setQuestion(e.target.value)}
-          value={question}
+          onChange={(e) => setQuery(e.target.value)}
+          value={query}
         />
         <Button type="submit" disabled={processing} className="min-w-[80px]">
           {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Ask"}

@@ -1,5 +1,5 @@
 import { Schema, model } from 'mongoose'
-import { IMessage } from './message.model'
+// import { IMessage } from './message.model'
 
 const DOCUMENT_NAME = 'Chat'
 const COLLECTION_NAME = 'Chats'

@@ -9,6 +9,9 @@ router.post('/process', asyncHandler(chatPDFController.process))
 router.post('/ask', asyncHandler(chatPDFController.ask))
 router.post('/create', asyncHandler(chatPDFController.create))
 
+router.post('/ingest', asyncHandler(chatPDFController.ingest))
+router.post('/chat', asyncHandler(chatPDFController.chat))
+
 router.get('/get', asyncHandler(chatPDFController.getChats))
 router.get('/get/:chatId', asyncHandler(chatPDFController.getChatDetail))
 

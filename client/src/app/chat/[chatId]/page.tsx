@@ -1,7 +1,6 @@
 "use client";
 
 import chatsApi from "@/apis/chats.api";
-import ChatComponent from "@/components/shared/ChatComponent";
 import ChatSideBar from "@/components/shared/ChatSideBar";
 import { MainComponent } from "@/components/shared/MainComponent";
 import { PDFViewer } from "@/components/shared/PDFViewer";
@@ -20,7 +19,7 @@ export default function page({ params }: { params: { chatId: string } }) {
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const { data: ChatsData } = useQuery({
-    queryKey: ["chats"],
+    queryKey: ["chats", { userId }],
     queryFn: () => chatsApi.getChats({ userId }),
   });
 
@@ -46,6 +45,7 @@ export default function page({ params }: { params: { chatId: string } }) {
         <MainComponent
           chatDetailId={chatId}
           pdfUrl={getS3Url(ChatDetailData?.data.metadata.chat.fileKey)}
+          fileKey={ChatDetailData?.data.metadata.chat.fileKey}
         />
       </div>
     </div>
